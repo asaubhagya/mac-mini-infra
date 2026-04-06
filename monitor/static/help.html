@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f1117">
+<title>Metric Guide — Mac Mini Monitor</title>
+<style>
+  :root{
+    --bg:#0f1117;--card:#1a1d2e;--card2:#1e2235;--border:#2a2d3e;
+    --accent:#00d4ff;--green:#00e676;--yellow:#ffeb3b;--red:#ff5252;--purple:#b388ff;
+    --text:#e0e0e0;--muted:#7a7f9a;
+    --font:'SF Mono','Fira Code','Consolas',monospace;
+    --radius:10px;--pad:20px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{font-size:14px}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+  header{
+    position:sticky;top:0;z-index:10;
+    display:flex;align-items:center;gap:14px;
+    padding:12px var(--pad);background:var(--card);border-bottom:1px solid var(--border);
+  }
+  .back-btn{
+    color:var(--accent);text-decoration:none;font-size:12px;
+    border:1px solid var(--border);border-radius:6px;padding:4px 10px;
+    transition:border-color .15s;white-space:nowrap;
+  }
+  .back-btn:hover{border-color:var(--accent)}
+  .page-title{font-size:14px;font-weight:700;color:var(--text)}
+
+  main{padding:var(--pad);max-width:860px;margin:0 auto;padding-bottom:40px}
+
+  .intro{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 20px;margin-bottom:24px;font-size:12px;color:var(--muted);line-height:1.7;
+  }
+  .intro b{color:var(--text)}
+
+  .section{margin-bottom:28px}
+  .section-label{
+    font-size:9px;text-transform:uppercase;letter-spacing:2px;
+    color:var(--muted);margin-bottom:10px;padding-bottom:6px;
+    border-bottom:1px solid var(--border);
+  }
+
+  .metric-grid{display:grid;grid-template-columns:1fr;gap:10px}
+  @media(min-width:600px){.metric-grid{grid-template-columns:1fr 1fr}}
+
+  .metric-card{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 16px;
+  }
+  .metric-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .metric-icon{font-size:16px}
+  .metric-name{font-size:12px;font-weight:700;color:var(--text)}
+  .metric-unit{font-size:10px;color:var(--muted);margin-left:auto}
+  .metric-desc{font-size:11px;color:var(--muted);line-height:1.6}
+  .metric-desc b{color:var(--text)}
+  .metric-desc code{
+    background:var(--card2);border:1px solid var(--border);
+    border-radius:3px;padding:0 4px;font-size:10px;color:var(--accent);
+  }
+
+  .threshold-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .threshold{font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600}
+  .t-good{background:rgba(0,230,118,.15);color:var(--green)}
+  .t-warn{background:rgba(255,235,59,.15);color:var(--yellow)}
+  .t-bad{background:rgba(255,82,82,.15);color:var(--red)}
+  .t-info{background:rgba(0,212,255,.15);color:var(--accent)}
+
+  .tip-box{
+    background:var(--card2);border-left:3px solid var(--accent);
+    border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 14px;margin-top:10px;font-size:11px;color:var(--muted);line-height:1.6;
+  }
+  .tip-box b{color:var(--text)}
+
+  @media(max-width:480px){:root{--pad:14px}}
+</style>
+</head>
+<body>
+<header>
+  <a href="/" class="back-btn">← Dashboard</a>
+  <span class="page-title">Metric Guide</span>
+</header>
+
+<main>
+
+<div class="intro">
+  This guide explains every metric shown on the dashboard. Your Mac Mini runs on <b>Apple M4</b> — an Apple Silicon chip where <b>CPU, GPU, and RAM all share the same unified memory pool</b>. This means the GPU can use more RAM when needed (great for Ollama) but also means RAM pressure affects everything at once.
+</div>
+
+<!-- ── Compute ── -->
+<div class="section">
+  <div class="section-label">Compute</div>
+  <div class="metric-grid">
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">⚙️</span>
+        <span class="metric-name">CPU %</span>
+        <span class="metric-unit">0 – 100%</span>
+      </div>
+      <div class="metric-desc">
+        How much of the <b>10-core M4 processor</b> is in use right now. macOS averages across all cores.
+        High CPU is normal for short bursts (compiling, video). Sustained high CPU with no obvious cause may indicate a runaway process — check the process table.
+      </div>
+      <div class="threshold-row">
+        <span class="threshold t-good">0–60% Normal</span>
+        <span class="threshold t-warn">60–80% Busy</span>
+        <span class="threshold t-bad">80%+ Hot</span>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">🎮</span>
+        <span class="metric-name">GPU %</span>
+        <span class="metric-unit">Apple M4 · 10 cores</span>
+      </div>
+      <div class="metric-desc">
+        How busy the <b>integrated M4 GPU</b> is. On Apple Silicon the GPU lives on the same chip as the CPU and uses shared (unified) memory.
+        <br><br>
+        <b>Ollama</b> runs AI models on the GPU — you'll see this spike when you send prompts. High GPU% + high GPU memory = a model is actively running inference.
+      </div>
+      <div class="threshold-row">
+        <span class="threshold t-good">0–40% Idle/light</span>
+        <span class="threshold t-warn">40–80% Active</span>
+        <span class="threshold t-bad">80%+ Heavy load</span>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">📊</span>
+        <span class="metric-name">Load Average</span>
+        <span class="metric-unit">1m · 5m · 15m</span>
+      </div>
+      <div class="metric-desc">
+        The average number of processes <b>waiting to run</b> over the last 1, 5, and 15 minutes.
+        On a 10-core chip, a load of <code>10.0</code> means every core is fully occupied. Values below 10 on this Mac are fine. Watch the 15m number — it tells you if load is trending up or down.
+      </div>
+      <div class="threshold-row">
+        <span class="threshold t-good">&lt; 5 Normal</span>
+        <span class="threshold t-warn">5–10 Busy</span>
+        <span class="threshold t-bad">&gt; 10 Overloaded</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Memory ── -->
+<div class="section">
+  <div class="section-label">Memory (Unified)</div>
+  <div class="metric-grid">
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">🧠</span>
+        <span class="metric-name">Memory %</span>
+        <span class="metric-unit">Used / Total GB</span>
+      </div>
+      <div class="metric-desc">
+        How much of the <b>total unified memory</b> (RAM) is in use. On Apple Silicon this pool is shared between CPU, GPU, and Neural Engine — so a large AI model loaded in Ollama will show here too.
+        <br><br>
+        macOS manages this aggressively: inactive pages are reclaimed automatically so high% isn't always bad — watch <b>Memory Pressure</b> instead.
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">🔴</span>
+        <span class="metric-name">Memory Pressure</span>
+        <span class="metric-unit">Normal · Moderate · Critical</span>
+      </div>
+      <div class="metric-desc">
+        Apple's own measure of memory health. More meaningful than raw % because it accounts for <b>wired</b> (pinned) and <b>compressed</b> memory.
+        <br><br>
+        <b>Normal:</b> plenty of free memory.<br>
+        <b>Moderate:</b> macOS is compressing pages to make room — performance may start to dip.<br>
+        <b>Critical:</b> macOS is swapping to disk — everything will feel sluggish.
+      </div>
+      <div class="threshold-row">
+        <span class="threshold t-good">Normal</span>
+        <span class="threshold t-warn">Moderate</span>
+        <span class="threshold t-bad">Critical</span>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">💾</span>
+        <span class="metric-name">GPU Memory</span>
+        <span class="metric-unit">GB currently used by GPU</span>
+      </div>
+      <div class="metric-desc">
+        How many GB of unified memory the <b>GPU is actively using</b>. When you load an Ollama model this number rises — a 7B model typically uses ~4–5 GB, a 13B model ~8–10 GB.
+        <br><br>
+        If GPU memory + system memory exceed the total (e.g. 24 GB), the Mac will start swapping, causing slow inference.
+      </div>
+      <div class="tip-box">
+        <b>Ollama tip:</b> Run <code>ollama ps</code> in Terminal to see which models are loaded and how much VRAM each is using.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Storage ── -->
+<div class="section">
+  <div class="section-label">Storage</div>
+  <div class="metric-grid">
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">💿</span>
+        <span class="metric-name">Disk %</span>
+        <span class="metric-unit">Used / Total GB</span>
+      </div>
+      <div class="metric-desc">
+        How full the main internal SSD is. macOS itself needs headroom for virtual memory (swap) — keep at least <b>10–15 GB free</b> for smooth operation.
+        <br><br>
+        Ollama model files are stored on disk (usually in <code>~/.ollama/models</code>). Each downloaded model can be 4–20 GB, so disk usage grows as you pull more models.
+      </div>
+      <div class="threshold-row">
+        <span class="threshold t-good">&lt; 70% Fine</span>
+        <span class="threshold t-warn">70–85% Getting full</span>
+        <span class="threshold t-bad">&gt; 85% Action needed</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Ollama ── -->
+<div class="section">
+  <div class="section-label">Ollama AI Server</div>
+  <div class="metric-grid">
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">🤖</span>
+        <span class="metric-name">Ollama Status</span>
+        <span class="metric-unit">Running / Stopped</span>
+      </div>
+      <div class="metric-desc">
+        Whether the <b>Ollama server</b> is running at <code>localhost:11434</code>. When running, it shows any models currently loaded into GPU memory.
+        <br><br>
+        <b>Running, no active models:</b> Ollama is ready but idle — models may have been unloaded from GPU.<br>
+        <b>Running + model shown:</b> A model is loaded and ready for inference (fast response to prompts).
+      </div>
+      <div class="tip-box">
+        Models stay loaded in GPU memory for ~5 minutes after last use, then auto-unload to free memory. The badge here shows what's <b>currently hot in memory</b>.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Trend chart ── -->
+<div class="section">
+  <div class="section-label">Performance Trend Chart</div>
+  <div class="metric-grid">
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">📈</span>
+        <span class="metric-name">Trend Chart</span>
+        <span class="metric-unit">1h · 6h · 24h windows</span>
+      </div>
+      <div class="metric-desc">
+        Shows CPU%, RAM%, and GPU% over time. Data is sampled <b>every 30 seconds</b> and stored for up to 24 hours — history survives restarts.
+        <br><br>
+        <b>1h</b> — the default, best for watching real-time load (120 data points, 30s resolution).<br>
+        <b>6h</b> — good for spotting recurring patterns (e.g., a scheduled backup).<br>
+        <b>24h</b> — shows the full day, useful for spotting overnight load.
+      </div>
+      <div class="tip-box">
+        The chart refreshes every <b>30 seconds</b>. GPU line appears as data accumulates — it will be absent on a fresh install until the first sample is written.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Processes ── -->
+<div class="section">
+  <div class="section-label">Processes</div>
+  <div class="metric-grid">
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">🔬</span>
+        <span class="metric-name">Top Processes</span>
+        <span class="metric-unit">Top 20 by CPU</span>
+      </div>
+      <div class="metric-desc">
+        The 20 processes using the most CPU right now. <b>Tap any column header</b> to re-sort by that column.
+        <br><br>
+        <b>CPU %</b> — current share of total CPU. Can briefly exceed 100% on multi-threaded work.<br>
+        <b>RAM MB</b> — resident set size: physical memory this process is actually using right now.<br>
+        <b>Status</b> — <span style="color:#00e676">running</span> means actively executing; <span style="color:#7a7f9a">sleeping</span> is normal idle state.
+      </div>
+      <div class="tip-box">
+        Processes named <code>kernel_task</code>, <code>WindowServer</code>, and <code>mds</code> are normal macOS system processes. High <code>kernel_task</code> CPU is macOS throttling the chip due to thermals — try improving airflow.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Scheduled ── -->
+<div class="section">
+  <div class="section-label">Scheduled Jobs</div>
+  <div class="metric-grid">
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">⏰</span>
+        <span class="metric-name">Cron Jobs</span>
+        <span class="metric-unit">Unix scheduler</span>
+      </div>
+      <div class="metric-desc">
+        Traditional Unix scheduled tasks from your <b>crontab</b>. The 5 columns before the command are the schedule: <code>minute hour day month weekday</code>.
+        <br><br>
+        Example: <code>0 2 * * *</code> = every day at 2:00 AM. An asterisk (<code>*</code>) means "every".
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">🚀</span>
+        <span class="metric-name">Launch Agents</span>
+        <span class="metric-unit">macOS scheduler</span>
+      </div>
+      <div class="metric-desc">
+        macOS-native background services managed by <b>launchd</b> — the recommended way to run things on a schedule or at login on a Mac.
+        <br><br>
+        <b>At login</b> — starts when you log in.<br>
+        <b>Every Xm/h</b> — runs on a repeating interval.<br>
+        <b>HH:MM</b> — runs at a specific time of day.
+        <br><br>
+        This monitor itself (<code>com.macmini.monitor</code>) is listed here.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1117">
+<title>Mac Mini Monitor</title>
+<style>
+  :root {
+    --bg:#0f1117; --card:#1a1d2e; --card2:#1e2235; --border:#2a2d3e;
+    --accent:#00d4ff; --green:#00e676; --yellow:#ffeb3b; --red:#ff5252;
+    --purple:#b388ff; --orange:#ff9800;
+    --text:#e0e0e0; --muted:#7a7f9a;
+    --font:'SF Mono','Fira Code','Consolas',monospace;
+    --radius:12px; --pad:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{font-size:14px}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+  /* ── Header ── */
+  header{
+    position:sticky;top:0;z-index:10;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:11px var(--pad);background:var(--card);border-bottom:1px solid var(--border);
+    flex-wrap:wrap;gap:6px;
+  }
+  .hdr-left{display:flex;align-items:center;gap:14px}
+  .hdr-title{font-size:14px;font-weight:700;color:var(--accent);letter-spacing:1px;white-space:nowrap}
+  .hdr-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:11px}
+  .hdr-meta span{color:var(--muted)}
+  .hdr-meta span b{color:var(--text)}
+  .help-btn{
+    font-size:11px;color:var(--muted);text-decoration:none;
+    border:1px solid var(--border);border-radius:6px;padding:4px 10px;
+    transition:color .15s,border-color .15s;white-space:nowrap;
+  }
+  .help-btn:hover,.help-btn:active{color:var(--accent);border-color:var(--accent)}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ── Layout ── */
+  main{padding:var(--pad);max-width:1400px;margin:0 auto;padding-bottom:36px}
+  .section-title{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin:20px 0 10px}
+
+  /* ── Gauge grid: 2-col mobile, 3-col tablet, 6-col wide ── */
+  .gauges{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(min-width:600px){.gauges{grid-template-columns:repeat(3,1fr)}}
+  @media(min-width:960px){.gauges{grid-template-columns:repeat(6,1fr)}}
+
+  .gauge-card{
+    background:var(--card);border:1px solid var(--border);
+    border-radius:var(--radius);padding:14px;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+  }
+  .gauge-card .glabel{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted)}
+  .gauge-wrap{position:relative;width:100px;height:58px}
+  canvas.arc{width:100px;height:58px}
+  .gauge-val{position:absolute;bottom:0;left:50%;transform:translateX(-50%);font-size:18px;font-weight:700;white-space:nowrap}
+  .gauge-sub{font-size:10px;color:var(--muted);text-align:center;line-height:1.4}
+
+  /* Load avg */
+  .load-row{display:flex;gap:12px}
+  .load-item{display:flex;flex-direction:column;align-items:center;gap:1px}
+  .load-item .lv{font-size:16px;font-weight:700}
+  .load-item .ll{font-size:9px;color:var(--muted)}
+
+  /* Ollama card */
+  .ollama-card{
+    background:var(--card);border:1px solid var(--border);
+    border-radius:var(--radius);padding:14px;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+  }
+  .ollama-status{
+    display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;
+  }
+  .ollama-models{font-size:10px;color:var(--muted);text-align:center;line-height:1.6}
+  .model-tag{
+    display:inline-block;background:var(--card2);border:1px solid var(--border);
+    border-radius:4px;padding:1px 6px;font-size:10px;color:var(--purple);margin:1px;
+  }
+
+  /* Memory pressure badge */
+  .pressure-badge{font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600}
+  .pressure-normal{background:rgba(0,230,118,.15);color:var(--green)}
+  .pressure-moderate{background:rgba(255,235,59,.15);color:var(--yellow)}
+  .pressure-critical{background:rgba(255,82,82,.15);color:var(--red)}
+  .pressure-unknown{background:rgba(122,127,154,.15);color:var(--muted)}
+
+  /* ── Chart ── */
+  .chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+  .chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+  .chart-legend{display:flex;gap:12px;flex-wrap:wrap}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+  .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .window-btns{display:flex;gap:4px}
+  .wbtn{
+    background:none;border:1px solid var(--border);color:var(--muted);
+    font-family:var(--font);font-size:10px;padding:3px 8px;border-radius:4px;
+    cursor:pointer;transition:all .15s;min-height:28px;
+  }
+  .wbtn.active,.wbtn:active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
+
+  /* ── Process table ── */
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse;min-width:380px}
+  thead th{
+    background:var(--card2);padding:9px 11px;text-align:left;
+    font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);
+    border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;
+  }
+  tbody tr{border-bottom:1px solid var(--border)}
+  tbody tr:last-child{border-bottom:none}
+  tbody td{padding:7px 11px;font-size:12px}
+  .proc-name{color:var(--accent);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pid{color:var(--muted);font-size:11px}
+  .status-running{color:var(--green)}
+  .status-sleeping{color:var(--muted)}
+  .status-other{color:var(--yellow)}
+  .cpu-bar-wrap{display:flex;align-items:center;gap:6px}
+  .cpu-num{min-width:38px;text-align:right;font-size:11px}
+  .cpu-bar-track{width:50px;background:var(--border);border-radius:3px;height:5px;overflow:hidden;flex-shrink:0}
+  .cpu-bar-fill{height:100%;border-radius:3px}
+  @media(max-width:480px){.col-pid{display:none};table{min-width:300px}}
+
+  /* ── Scheduled ── */
+  .sched-grid{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:700px){.sched-grid{grid-template-columns:1fr 1fr}}
+  details{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  summary{
+    padding:13px 16px;cursor:pointer;font-size:12px;font-weight:600;
+    color:var(--text);list-style:none;display:flex;align-items:center;gap:8px;
+    background:var(--card2);border-bottom:1px solid var(--border);min-height:46px;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:'▶';font-size:9px;color:var(--muted);transition:transform .2s}
+  details[open] summary::before{transform:rotate(90deg)}
+  .sched-list{padding:10px 14px;display:flex;flex-direction:column;gap:7px}
+  .sched-item{
+    background:var(--card2);border-radius:8px;padding:9px 12px;
+    display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+  }
+  .sched-label{color:var(--text);word-break:break-all;font-size:11px;line-height:1.5}
+  .sched-schedule{color:var(--accent);font-size:10px;white-space:nowrap;flex-shrink:0;padding-top:1px}
+  .empty-msg{color:var(--muted);font-size:11px;padding:6px 0}
+
+  @media(max-width:480px){:root{--pad:12px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hdr-left">
+    <div class="hdr-title"><span class="dot"></span>MAC MINI</div>
+    <div class="hdr-meta">
+      <span id="hdr-host"><b>—</b></span>
+      <span>Up <b id="hdr-uptime">—</b></span>
+      <span class="hdr-os-item">macOS <b id="hdr-os">—</b></span>
+      <span>IP <b id="hdr-ip">—</b></span>
+    </div>
+  </div>
+  <a href="/help.html" class="help-btn">? Metric Guide</a>
+</header>
+
+<main>
+  <div class="section-title">System Resources</div>
+  <div class="gauges">
+
+    <div class="gauge-card">
+      <div class="glabel">CPU</div>
+      <div class="gauge-wrap">
+        <canvas class="arc" id="cpu-arc" width="200" height="116"></canvas>
+        <div class="gauge-val" id="cpu-val">—</div>
+      </div>
+      <div class="gauge-sub" id="cpu-load">—</div>
+    </div>
+
+    <div class="gauge-card">
+      <div class="glabel">Memory</div>
+      <div class="gauge-wrap">
+        <canvas class="arc" id="mem-arc" width="200" height="116"></canvas>
+        <div class="gauge-val" id="mem-val">—</div>
+      </div>
+      <div class="gauge-sub" id="mem-sub">— / — GB</div>
+    </div>
+
+    <div class="gauge-card">
+      <div class="glabel">GPU · M4</div>
+      <div class="gauge-wrap">
+        <canvas class="arc" id="gpu-arc" width="200" height="116"></canvas>
+        <div class="gauge-val" id="gpu-val">—</div>
+      </div>
+      <div class="gauge-sub" id="gpu-sub">— GB VRAM</div>
+    </div>
+
+    <div class="gauge-card">
+      <div class="glabel">Disk</div>
+      <div class="gauge-wrap">
+        <canvas class="arc" id="disk-arc" width="200" height="116"></canvas>
+        <div class="gauge-val" id="disk-val">—</div>
+      </div>
+      <div class="gauge-sub" id="disk-sub">— / — GB</div>
+    </div>
+
+    <div class="gauge-card">
+      <div class="glabel">Load Avg</div>
+      <div class="load-row">
+        <div class="load-item"><div class="lv" id="load-1m">—</div><div class="ll">1m</div></div>
+        <div class="load-item"><div class="lv" id="load-5m">—</div><div class="ll">5m</div></div>
+        <div class="load-item"><div class="lv" id="load-15m">—</div><div class="ll">15m</div></div>
+      </div>
+    </div>
+
+    <div class="ollama-card">
+      <div class="glabel">Ollama</div>
+      <div class="ollama-status">
+        <span class="dot" id="ollama-dot" style="background:var(--muted)"></span>
+        <span id="ollama-status-text">—</span>
+      </div>
+      <div class="ollama-models" id="ollama-models">—</div>
+      <span id="mem-pressure-badge" class="pressure-badge pressure-unknown">—</span>
+    </div>
+
+  </div>
+
+  <div class="section-title">Performance Trend</div>
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#00d4ff"></div>CPU %</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#00e676"></div>RAM %</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#b388ff"></div>GPU %</div>
+      </div>
+      <div class="window-btns">
+        <button class="wbtn active" onclick="setWindow(3600,this)">1h</button>
+        <button class="wbtn" onclick="setWindow(21600,this)">6h</button>
+        <button class="wbtn" onclick="setWindow(86400,this)">24h</button>
+      </div>
+    </div>
+    <canvas id="trend-chart"></canvas>
+  </div>
+
+  <div class="section-title">Top Processes</div>
+  <div class="table-card">
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th onclick="sortProcs('name')">Process</th>
+          <th class="col-pid" onclick="sortProcs('pid')">PID</th>
+          <th onclick="sortProcs('cpu_percent')">CPU %</th>
+          <th onclick="sortProcs('mem_mb')">RAM MB</th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody id="proc-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-title">Scheduled Jobs</div>
+  <div class="sched-grid">
+    <details open>
+      <summary>Cron Jobs</summary>
+      <div class="sched-list" id="cron-list"><span class="empty-msg">Loading…</span></div>
+    </details>
+    <details open>
+      <summary>Launch Agents</summary>
+      <div class="sched-list" id="agents-list"><span class="empty-msg">Loading…</span></div>
+    </details>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ── Arc gauge ────────────────────────────────────────────────────────────────
+function drawArc(id, pct, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const ctx = el.getContext('2d');
+  const W = el.width, H = el.height;
+  ctx.clearRect(0, 0, W, H);
+  const cx = W/2, cy = H - 12, r = Math.min(cx-4, cy-4);
+  ctx.lineWidth = 11; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 2*Math.PI);
+  ctx.strokeStyle = '#2a2d3e'; ctx.stroke();
+  if (pct > 0) {
+    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + (Math.min(pct,100)/100)*Math.PI);
+    ctx.strokeStyle = color || (pct<60?'#00d4ff':pct<80?'#ffeb3b':'#ff5252');
+    ctx.stroke();
+  }
+}
+
+// ── Trend chart ──────────────────────────────────────────────────────────────
+let trendChart = null, currentWindow = 3600;
+
+function initTrend() {
+  const isMobile = window.innerWidth < 600;
+  trendChart = new Chart(document.getElementById('trend-chart').getContext('2d'), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      {label:'CPU %', data:[], borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.07)', borderWidth:1.5, pointRadius:0, tension:.3, fill:true},
+      {label:'RAM %', data:[], borderColor:'#00e676', backgroundColor:'rgba(0,230,118,.07)', borderWidth:1.5, pointRadius:0, tension:.3, fill:true},
+      {label:'GPU %', data:[], borderColor:'#b388ff', backgroundColor:'rgba(179,136,255,.07)', borderWidth:1.5, pointRadius:0, tension:.3, fill:true},
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:true, aspectRatio: isMobile ? 1.5 : 3,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#1a1d2e',borderColor:'#2a2d3e',borderWidth:1,
+          titleFont:{family:'monospace',size:10},bodyFont:{family:'monospace',size:10}}
+      },
+      scales:{
+        x:{grid:{color:'#1e2235'},ticks:{color:'#7a7f9a',maxTicksLimit:isMobile?6:12,font:{family:'monospace',size:9}}},
+        y:{min:0,max:100,grid:{color:'#1e2235'},ticks:{color:'#7a7f9a',font:{family:'monospace',size:9},callback:v=>v+'%'}},
+      }
+    }
+  });
+}
+
+function fmtTime(ts) {
+  const d = new Date(ts*1000);
+  return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+}
+
+async function loadTrend() {
+  try {
+    const data = await fetch('/api/history?window='+currentWindow).then(r=>r.json());
+    if (!trendChart) return;
+    trendChart.data.labels = data.map(r=>fmtTime(r.ts));
+    trendChart.data.datasets[0].data = data.map(r=>r.cpu);
+    trendChart.data.datasets[1].data = data.map(r=>r.mem_pct);
+    trendChart.data.datasets[2].data = data.map(r=>r.gpu != null ? r.gpu : null);
+    trendChart.update('none');
+  } catch(e) { console.error('trend',e); }
+}
+
+function setWindow(w, btn) {
+  currentWindow = w;
+  document.querySelectorAll('.wbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadTrend();
+}
+
+// ── Current + Extended ───────────────────────────────────────────────────────
+async function loadCurrent() {
+  try {
+    const d = await fetch('/api/current').then(r=>r.json());
+    document.getElementById('hdr-host').innerHTML = '<b>'+escHtml(d.hostname)+'</b>';
+    document.getElementById('hdr-os').textContent = d.os_version;
+    document.getElementById('hdr-uptime').textContent = d.uptime;
+    document.getElementById('hdr-ip').textContent = d.local_ip;
+
+    drawArc('cpu-arc', d.cpu_percent);
+    document.getElementById('cpu-val').textContent = d.cpu_percent+'%';
+    document.getElementById('cpu-load').textContent = d.load_avg['1m']+' · '+d.load_avg['5m']+' · '+d.load_avg['15m'];
+    document.getElementById('load-1m').textContent = d.load_avg['1m'];
+    document.getElementById('load-5m').textContent = d.load_avg['5m'];
+    document.getElementById('load-15m').textContent = d.load_avg['15m'];
+
+    drawArc('mem-arc', d.memory.percent);
+    document.getElementById('mem-val').textContent = d.memory.percent+'%';
+    document.getElementById('mem-sub').textContent = d.memory.used_gb+' / '+d.memory.total_gb+' GB';
+
+    drawArc('disk-arc', d.disk.percent);
+    document.getElementById('disk-val').textContent = d.disk.percent+'%';
+    document.getElementById('disk-sub').textContent = d.disk.used_gb+' / '+d.disk.total_gb+' GB';
+  } catch(e) { console.error('current',e); }
+}
+
+async function loadExtended() {
+  try {
+    const d = await fetch('/api/extended').then(r=>r.json());
+
+    // GPU
+    const gpu = d.gpu;
+    if (gpu.available && gpu.gpu_percent != null) {
+      drawArc('gpu-arc', gpu.gpu_percent, '#b388ff');
+      document.getElementById('gpu-val').textContent = gpu.gpu_percent+'%';
+      document.getElementById('gpu-sub').textContent =
+        (gpu.gpu_mem_gb!=null ? gpu.gpu_mem_gb+' GB used' : '') +
+        (gpu.gpu_cores ? ' · '+gpu.gpu_cores+' cores' : '');
+    } else {
+      document.getElementById('gpu-val').textContent = 'N/A';
+      document.getElementById('gpu-sub').textContent = 'No data';
+    }
+
+    // Memory pressure
+    const mp = d.memory_pressure;
+    const badge = document.getElementById('mem-pressure-badge');
+    badge.textContent = 'RAM: '+mp.pressure;
+    badge.className = 'pressure-badge pressure-'+(mp.pressure||'unknown');
+
+    // Ollama
+    const ol = d.ollama;
+    const dot = document.getElementById('ollama-dot');
+    const statusTxt = document.getElementById('ollama-status-text');
+    const modelsTxt = document.getElementById('ollama-models');
+    if (ol.running) {
+      dot.style.background = 'var(--green)';
+      statusTxt.textContent = 'Running';
+      statusTxt.style.color = 'var(--green)';
+      if (ol.active_models.length === 0) {
+        modelsTxt.textContent = 'No active models';
+      } else {
+        modelsTxt.innerHTML = ol.active_models.map(m=>
+          '<span class="model-tag">'+escHtml(m.name.split(':')[0])+'</span>'
+        ).join('');
+      }
+    } else {
+      dot.style.background = 'var(--muted)';
+      statusTxt.textContent = 'Stopped';
+      statusTxt.style.color = 'var(--muted)';
+      modelsTxt.textContent = 'Not running';
+    }
+  } catch(e) { console.error('extended',e); }
+}
+
+// ── Processes ────────────────────────────────────────────────────────────────
+let procData=[], sortKey='cpu_percent', sortAsc=false;
+
+function cpuColor(p) {
+  return p<5?'#00e676':p<30?'#00d4ff':p<70?'#ffeb3b':'#ff5252';
+}
+
+function renderProcs() {
+  const sorted=[...procData].sort((a,b)=>{
+    const av=a[sortKey],bv=b[sortKey];
+    return typeof av==='string'?(sortAsc?av.localeCompare(bv):bv.localeCompare(av)):(sortAsc?av-bv:bv-av);
+  });
+  document.getElementById('proc-tbody').innerHTML=sorted.map(p=>{
+    const sc=p.status==='running'?'status-running':p.status==='sleeping'?'status-sleeping':'status-other';
+    const c=cpuColor(p.cpu_percent);
+    return `<tr>
+      <td class="proc-name" title="${escHtml(p.name)}">${escHtml(p.name)}</td>
+      <td class="pid col-pid">${p.pid}</td>
+      <td><div class="cpu-bar-wrap">
+        <span class="cpu-num">${p.cpu_percent.toFixed(1)}%</span>
+        <div class="cpu-bar-track"><div class="cpu-bar-fill" style="width:${Math.min(p.cpu_percent,100)}%;background:${c}"></div></div>
+      </div></td>
+      <td>${p.mem_mb.toFixed(0)}</td>
+      <td class="${sc}">${p.status}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortProcs(k){sortAsc=sortKey===k?!sortAsc:false;sortKey=k;renderProcs()}
+
+async function loadProcesses() {
+  try { procData=await fetch('/api/processes').then(r=>r.json()); renderProcs(); }
+  catch(e){console.error('procs',e);}
+}
+
+// ── Scheduled ────────────────────────────────────────────────────────────────
+async function loadScheduled() {
+  try {
+    const d=await fetch('/api/scheduled').then(r=>r.json());
+    const cronEl=document.getElementById('cron-list');
+    cronEl.innerHTML=!d.cron.length
+      ?'<span class="empty-msg">No cron jobs found</span>'
+      :d.cron.map(line=>{
+        const pts=line.split(/\s+/);
+        return `<div class="sched-item"><span class="sched-label">${escHtml(pts.slice(5).join(' '))}</span><span class="sched-schedule">${escHtml(pts.slice(0,5).join(' '))}</span></div>`;
+      }).join('');
+    const agEl=document.getElementById('agents-list');
+    agEl.innerHTML=!d.launch_agents.length
+      ?'<span class="empty-msg">No launch agents found</span>'
+      :d.launch_agents.map(a=>`<div class="sched-item"><span class="sched-label">${escHtml(a.label)}</span><span class="sched-schedule">${escHtml(a.schedule)}</span></div>`).join('');
+  } catch(e){console.error('scheduled',e);}
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',async()=>{
+  initTrend();
+  await Promise.all([loadCurrent(),loadExtended(),loadProcesses(),loadTrend(),loadScheduled()]);
+  setInterval(loadCurrent,5000);
+  setInterval(loadExtended,8000);
+  setInterval(loadProcesses,5000);
+  setInterval(loadTrend,30000);
+});
+</script>
+</body>
+</html>

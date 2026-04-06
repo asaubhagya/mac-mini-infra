@@ -1,0 +1,6 @@
+monitor/venv/
+monitor/__pycache__/
+*.pyc
+*.pyo
+*.db
+*.log
