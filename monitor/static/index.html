@@ -268,6 +268,10 @@
       <summary>Launch Agents</summary>
       <div class="sched-list" id="agents-list"><span class="empty-msg">Loading…</span></div>
     </details>
+    <details open>
+      <summary>Braincast Pipeline Jobs</summary>
+      <div class="sched-list" id="app-jobs-list"><span class="empty-msg">Loading…</span></div>
+    </details>
   </div>
 </main>
 
@@ -467,6 +471,21 @@ async function loadScheduled() {
     agEl.innerHTML=!d.launch_agents.length
       ?'<span class="empty-msg">No launch agents found</span>'
       :d.launch_agents.map(a=>`<div class="sched-item"><span class="sched-label">${escHtml(a.label)}</span><span class="sched-schedule">${escHtml(a.schedule)}</span></div>`).join('');
+    const jobsEl=document.getElementById('app-jobs-list');
+    const jobs=d.app_jobs||[];
+    jobsEl.innerHTML=!jobs.length
+      ?'<span class="empty-msg">No pipeline jobs found</span>'
+      :jobs.map(j=>{
+        const freq=j.interval_hours>=1?`Every ${j.interval_hours}h`:`Every ${Math.round(j.interval_hours*60)}m`;
+        const status=j.last_run_status||'—';
+        const statusColor=status==='completed'?'#4ade80':status==='failed'?'#f87171':'#94a3b8';
+        const lastRun=j.last_run_at?new Date(j.last_run_at).toLocaleString():'Never';
+        return `<div class="sched-item" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span class="sched-label" style="flex:1">${escHtml(j.name)}</span>
+          <span style="color:${statusColor};font-size:11px;font-weight:600">${escHtml(status)}</span>
+          <span class="sched-schedule" style="min-width:70px;text-align:right">${escHtml(freq)}</span>
+        </div>`;
+      }).join('');
   } catch(e){console.error('scheduled',e);}
 }
 

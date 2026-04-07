@@ -216,6 +216,26 @@ def _scan_launch_agents(directory):
     return results
 
 
+def _get_app_jobs():
+    """Query growthforge API for APScheduler job status (processing, discovery, etc.)."""
+    try:
+        with urllib.request.urlopen("http://localhost:8000/api/schedule", timeout=3) as r:
+            data = json.load(r)
+        return data.get("jobs", [])
+    except Exception:
+        pass
+
+    # Fallback: return static known schedule
+    return [
+        {"name": "download", "interval_hours": 2, "last_run_at": None, "last_run_status": None, "next_run_at": None},
+        {"name": "transcription", "interval_hours": 2, "last_run_at": None, "last_run_status": None, "next_run_at": None},
+        {"name": "highlights", "interval_hours": 0.083, "last_run_at": None, "last_run_status": None, "next_run_at": None},
+        {"name": "auto_heal", "interval_hours": 6, "last_run_at": None, "last_run_status": None, "next_run_at": None},
+        {"name": "discovery", "interval_hours": 4, "last_run_at": None, "last_run_status": None, "next_run_at": None},
+        {"name": "daily_pipeline", "interval_hours": 24, "last_run_at": None, "last_run_status": None, "next_run_at": None},
+    ]
+
+
 def get_scheduled():
     cron_jobs = []
     try:
@@ -230,4 +250,5 @@ def get_scheduled():
         _scan_launch_agents(Path.home() / "Library" / "LaunchAgents")
         + _scan_launch_agents("/Library/LaunchAgents")
     )
-    return {"cron": cron_jobs, "launch_agents": agents}
+    app_jobs = _get_app_jobs()
+    return {"cron": cron_jobs, "launch_agents": agents, "app_jobs": app_jobs}
